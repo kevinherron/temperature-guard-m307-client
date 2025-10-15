@@ -635,12 +635,33 @@ class M307Client(object):
         """
         Read entire log file (up to 4000 records, 15 bytes each)
 
+        Device resolution is automatically detected before parsing if not
+        already cached (0.1° for firmware v5+, 1.0° for older versions).
+
         Args:
             reset_pointer: If True, reset log pointer before reading
             callback: Optional function(record_dict) called for each record
 
         Returns:
-            list: List of record dicts
+            list: List of record dicts with the following structure:
+                {
+                    'datetime': datetime object,
+                    'temp_1': float or None or inf or -inf,
+                    'temp_2': float or None or inf or -inf,
+                    'internal_temp': float or None or inf or -inf,
+                    'internal_humidity': float or None,
+                    'door_1_state': bool,
+                    'door_2_state': bool,
+                    'power_status': bool
+                }
+
+            Special temperature values:
+                - None: No sensor connected
+                - float('inf'): Sensor open circuit
+                - float('-inf'): Sensor shorted
+
+            Special humidity values:
+                - None: Sensor failed
 
         Note:
             This may take significant time for large log files.
