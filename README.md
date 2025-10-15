@@ -2,7 +2,7 @@
 
 > **⚠️ WARNING:** This repository is 100% "vibe coded" and completely untested because I don't actually have one of these devices. Use at your own risk!
 
-Python 2.7 client library for communicating with M307 Temperature Guard devices via TCP/IP.
+Python 2.7/3.4+ client library for communicating with M307 Temperature Guard devices via TCP/IP.
 
 ## Overview
 
@@ -15,7 +15,7 @@ The M307 is a temperature and humidity monitoring device with door sensors, batt
 
 ## Requirements
 
-- Python 2.7
+- Python 2.7 or Python 3.4+
 - Network access to M307 device (default port: 10001)
 
 ## Installation
@@ -439,13 +439,14 @@ The M307 uses a simple binary protocol over TCP:
   - BCD (date/time components)
   - ASCII strings (names, identification)
 
-## Python 2.7 Compatibility
+## Python Version Support
 
-This library is designed for Python 2.7 and uses:
-- `bytearray` for binary data
-- `struct` for byte packing (where needed)
-- `datetime` for timestamps
-- No Python 3-specific features
+This library supports both Python 2.7 and Python 3.4+. It uses:
+- `from __future__ import` statements for cross-version compatibility
+- `bytearray` and `bytes()` for binary data (compatible with both versions)
+- `.format()` strings instead of f-strings
+- `argparse` for CLI (available in Python 2.7 and 3.2+)
+- Standard library modules compatible with both versions
 
 ## Testing
 
