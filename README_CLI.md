@@ -2,6 +2,26 @@
 
 Command-line interface for M307 Temperature Guard devices.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Global Options](#global-options)
+- [Command Reference](#command-reference)
+  - [Status & Monitoring](#status--monitoring)
+  - [Device Configuration](#device-configuration)
+  - [Sensor Names](#sensor-names)
+  - [Sensor Limits & Alarms](#sensor-limits--alarms)
+  - [Field Calibration](#field-calibration)
+  - [Device Settings](#device-settings)
+  - [Data Logging](#data-logging)
+  - [Low-Level Record Access](#low-level-record-access)
+- [Output Formats](#output-formats)
+- [Common Workflows](#common-workflows)
+- [Error Handling](#error-handling)
+- [Tips](#tips)
+- [Troubleshooting](#troubleshooting)
+- [Getting Help](#getting-help)
+
 ## Installation
 
 Make the script executable:

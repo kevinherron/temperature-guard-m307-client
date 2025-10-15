@@ -42,6 +42,18 @@ with M307Client('192.168.1.100') as client:
 
 ## API Documentation
 
+- [Connection Management](#connection-management)
+- [Reading Status](#reading-status)
+- [Configuration](#configuration)
+  - [Device Identification](#device-identification)
+  - [Sensor Names](#sensor-names)
+  - [Sensor Limits and Alarms](#sensor-limits-and-alarms)
+  - [Field Calibration](#field-calibration)
+  - [Device Settings](#device-settings)
+- [Data Logging](#data-logging)
+- [Low-Level User Record Access](#low-level-user-record-access)
+- [Helper Methods](#helper-methods)
+
 ### Connection Management
 
 #### Basic Usage
