@@ -142,6 +142,10 @@ door2 = client.get_door_state(2)
 
 battery = client.get_battery_voltage()     # Returns float (volts)
 power = client.get_power_status()          # Returns bool
+
+# Get device resolution info
+resolution_info = client.get_resolution_info()
+# Returns: {'resolution': 0.1 or 1.0, 'unit': 'C' or 'F'}
 ```
 
 ### Configuration
@@ -274,6 +278,7 @@ log_info = client.get_log_info()
 
 ```python
 # Read entire log file
+# Note: Device resolution is automatically detected before parsing
 records = client.read_log_file(reset_pointer=True)
 
 # Each record contains:
@@ -290,15 +295,22 @@ for record in records:
 ```python
 {
     'datetime': datetime,      # Timestamp
-    'temp_1': float,           # Temperature sensor 1 (÷10)
-    'temp_2': float,           # Temperature sensor 2 (÷10)
-    'internal_temp': float,    # Internal temperature (÷10)
+    'temp_1': float,           # Temperature sensor 1 (÷10 or ÷1 depending on device)
+    'temp_2': float,           # Temperature sensor 2 (÷10 or ÷1 depending on device)
+    'internal_temp': float,    # Internal temperature (÷10 or ÷1 depending on device)
     'internal_humidity': float,# Internal humidity (÷10)
     'door_1_state': bool,      # Door 1 open/closed
     'door_2_state': bool,      # Door 2 open/closed
     'power_status': bool       # Main power on/off
 }
 ```
+
+**Special temperature values:**
+- `None`: No sensor connected
+- `float('inf')`: Sensor open circuit
+- `float('-inf')`: Sensor shorted
+
+**Note:** Temperature resolution is automatically detected from the device (0.1° for firmware v5+, 1.0° for older versions).
 
 #### Streaming Log Read
 

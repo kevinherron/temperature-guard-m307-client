@@ -102,6 +102,8 @@ class M307Client(object):
         self.port = port if port is not None else self.DEFAULT_PORT
         self.timeout = timeout if timeout is not None else self.DEFAULT_TIMEOUT
         self._socket = None
+        self._cached_resolution = None  # 0.1 or 1.0, populated from status read
+        self._cached_unit = None        # 'C' or 'F', populated from status read
 
     def connect(self):
         """
@@ -132,6 +134,8 @@ class M307Client(object):
                 pass
             finally:
                 self._socket = None
+                self._cached_resolution = None
+                self._cached_unit = None
 
     def is_connected(self):
         """
@@ -237,6 +241,26 @@ class M307Client(object):
         """
         status = self.read_status()
         return status['main_power']
+
+    def get_resolution_info(self):
+        """
+        Get device temperature resolution and unit.
+
+        Reads status if not already cached. This is useful before reading
+        log files to ensure proper temperature parsing.
+
+        Returns:
+            dict: {'resolution': float, 'unit': str}
+                  resolution: 0.1 or 1.0 degrees
+                  unit: 'C' or 'F'
+        """
+        if self._cached_resolution is None:
+            self.read_status()
+
+        return {
+            'resolution': self._cached_resolution,
+            'unit': self._cached_unit
+        }
 
     # =========================================================================
     # User Record Operations
@@ -622,6 +646,10 @@ class M307Client(object):
             This may take significant time for large log files.
             Use callback for streaming processing.
         """
+        # Ensure we know the device's resolution before parsing logs
+        if self._cached_resolution is None:
+            self.read_status()
+
         # Build command
         data = bytearray(self.DATA_SIZE)
         data[0] = 0x01 if reset_pointer else 0x00
@@ -657,7 +685,7 @@ class M307Client(object):
                     record_data = record_buffer[:15]
                     record_buffer = record_buffer[15:]
 
-                    record = self._parse_log_record(record_data)
+                    record = self._parse_log_record(record_data, self._cached_resolution)
                     records.append(record)
 
                     if callback is not None:
@@ -889,6 +917,10 @@ class M307Client(object):
         resolution = 0.1 if data[58] == 10 else 1.0
         unit = chr(data[59]) if data[59] in (0x43, 0x46) else '?'
 
+        # Cache for use in log parsing
+        self._cached_resolution = resolution
+        self._cached_unit = unit
+
         return {
             'temperature_sensor_1': {
                 'reading': self.parse_temperature(data[4], data[5], resolution, unit),
@@ -1067,12 +1099,13 @@ class M307Client(object):
 
         return data
 
-    def _parse_log_record(self, record_data):
+    def _parse_log_record(self, record_data, resolution=0.1):
         """
         Parse 15-byte log record
 
         Args:
             record_data: 15-byte log record
+            resolution: Temperature resolution (0.1 or 1.0)
 
         Returns:
             dict: Parsed log record
@@ -1087,11 +1120,50 @@ class M307Client(object):
 
         dt = datetime(year, month, day, hours, minutes, 0)
 
-        # Parse sensor data
-        temp_1 = self.bytes_to_int16(record_data[6], record_data[7])
-        temp_2 = self.bytes_to_int16(record_data[8], record_data[9])
-        internal_temp = self.bytes_to_int16(record_data[10], record_data[11])
-        internal_humidity = self.bytes_to_int16(record_data[12], record_data[13])
+        # Parse sensor data (raw values)
+        temp_1_raw = self.bytes_to_int16(record_data[6], record_data[7])
+        temp_2_raw = self.bytes_to_int16(record_data[8], record_data[9])
+        internal_temp_raw = self.bytes_to_int16(record_data[10], record_data[11])
+        internal_humidity_raw = self.bytes_to_int16(record_data[12], record_data[13])
+
+        # Apply special value handling and resolution
+        divisor = 10.0 if resolution == 0.1 else 1.0
+
+        # Temperature sensor 1
+        if temp_1_raw == 1000:
+            temp_1 = None  # No sensor connected
+        elif temp_1_raw == 999:
+            temp_1 = float('inf')  # Sensor open circuit
+        elif temp_1_raw == -999:
+            temp_1 = float('-inf')  # Sensor shorted
+        else:
+            temp_1 = float(temp_1_raw) / divisor
+
+        # Temperature sensor 2
+        if temp_2_raw == 1000:
+            temp_2 = None  # No sensor connected
+        elif temp_2_raw == 999:
+            temp_2 = float('inf')  # Sensor open circuit
+        elif temp_2_raw == -999:
+            temp_2 = float('-inf')  # Sensor shorted
+        else:
+            temp_2 = float(temp_2_raw) / divisor
+
+        # Internal temperature
+        if internal_temp_raw == 1000:
+            internal_temp = None  # No sensor connected
+        elif internal_temp_raw == 999:
+            internal_temp = float('inf')  # Sensor open circuit
+        elif internal_temp_raw == -999:
+            internal_temp = float('-inf')  # Sensor shorted
+        else:
+            internal_temp = float(internal_temp_raw) / divisor
+
+        # Internal humidity (always 0.1% RH resolution)
+        if internal_humidity_raw == 999:
+            internal_humidity = None  # Sensor failed
+        else:
+            internal_humidity = float(internal_humidity_raw) / 10.0
 
         # Parse status byte
         status_byte = record_data[14]
@@ -1101,10 +1173,10 @@ class M307Client(object):
 
         return {
             'datetime': dt,
-            'temp_1': float(temp_1) / 10.0,
-            'temp_2': float(temp_2) / 10.0,
-            'internal_temp': float(internal_temp) / 10.0,
-            'internal_humidity': float(internal_humidity) / 10.0,
+            'temp_1': temp_1,
+            'temp_2': temp_2,
+            'internal_temp': internal_temp,
+            'internal_humidity': internal_humidity,
             'door_1_state': door_1_state,
             'door_2_state': door_2_state,
             'power_status': power_status,
